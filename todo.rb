@@ -4,6 +4,7 @@ require "tilt/erubis"
 require "sinatra/content_for"
 
 configure do
+  set :erb, :escape_html => true
   enable :sessions
   set :session_secret, 'secret'
 end
