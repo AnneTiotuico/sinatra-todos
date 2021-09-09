@@ -13,6 +13,14 @@ before do
   session[:lists] ||= []
 end
 
+def load_list(index)
+  list = session[:lists][index] if index && session[:lists][index]
+  return list if list
+
+  session[:error] = "The specified list was not found."
+  redirect "/lists"
+end
+
 helpers do 
   # Return an error message if the name is invalid. Return nil if name is valid.
   def error_for_list_name(name)
@@ -92,7 +100,7 @@ end
 # Display a single todo list
 get "/lists/:list_id" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
 
   erb :single_list, layout: :layout
 end
@@ -100,14 +108,14 @@ end
 # Edit an exisiting list
 get "/lists/:list_id/edit" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   erb :edit_list, layout: :layout
 end
 
 # Rename an existing list
 post "/lists/:list_id/edit" do 
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   new_name = params[:new_name].strip
   error = error_for_list_name(new_name)
 
@@ -115,7 +123,7 @@ post "/lists/:list_id/edit" do
     session[:error] = error
     erb :edit_list, layout: :layout
   else
-    session[:lists][@list_id][:name] = new_name
+    @list[:name] = new_name
     session[:success] = "Your list name has been updated."
     redirect "/lists/#{@list_id}"
   end
@@ -132,7 +140,7 @@ end
 # Add a new todo to a list
 post "/lists/:list_id/todos" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   text = params[:todo].strip
   
   error = error_for_todo(text)
@@ -149,7 +157,7 @@ end
 # Delete an existing todo
 post "/lists/:list_id/todos/:todo_id/delete" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   @todo_id = params[:todo_id].to_i
   
   deleted_todo = @list[:todos].delete_at(@todo_id)
@@ -165,7 +173,7 @@ end
 post "/lists/:list_id/todos/:todo_id" do
   @list_id = params[:list_id].to_i
   @todo_id = params[:todo_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   @todo_item = @list[:todos][@todo_id]
   @todo_item[:completed] = toggle(params[:completed])
   
