@@ -161,8 +161,12 @@ post "/lists/:list_id/todos/:todo_id/delete" do
   @todo_id = params[:todo_id].to_i
   
   deleted_todo = @list[:todos].delete_at(@todo_id)
-  session[:success] = "The #{deleted_todo[:name]} todo has been deleted."
-  redirect "/lists/#{@list_id}"
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    status 204
+  else
+    session[:success] = "The #{deleted_todo[:name]} todo has been deleted."
+    redirect "/lists/#{@list_id}"
+  end
 end
 
 def toggle(value)
