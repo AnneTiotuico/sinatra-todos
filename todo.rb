@@ -133,8 +133,17 @@ end
 post "/lists/:list_id/delete" do
   @list_id = params[:list_id].to_i
   deleted_list = session[:lists].delete_at(@list_id)
-  session[:success] = "The #{deleted_list[:name]} list has been deleted."
-  redirect "/lists"
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    "/lists"
+  else
+    session[:success] = "The #{deleted_list[:name]} list has been deleted."
+    redirect "/lists"
+  end
+end
+
+def next_todo_id(todos)
+  max = todos.map { |todo| todo[:id] }.max || 0
+  max + 1
 end
 
 # Add a new todo to a list
@@ -148,19 +157,23 @@ post "/lists/:list_id/todos" do
     session[:error] = error
     erb :single_list, layout: :layout
   else
-    @list[:todos] << { name: text, completed: "false" }
+    
+    id = next_todo_id(@list[:todos])
+    @list[:todos] << { id: id, name: text, completed: "false" }
+    
     session[:success] = "The todo was added."
     redirect "/lists/#{@list_id}"
   end
 end
 
 # Delete an existing todo
-post "/lists/:list_id/todos/:todo_id/delete" do
+post "/lists/:list_id/todos/:id/delete" do
   @list_id = params[:list_id].to_i
   @list = load_list(@list_id)
-  @todo_id = params[:todo_id].to_i
+  @todo_id = params[:id].to_i
   
-  deleted_todo = @list[:todos].delete_at(@todo_id)
+  # deleted_todo = @list[:todos].delete_at(@todo_id)
+  @list[:todos].reject! { |todo| todo[:id] == @todo_id }
   if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
     status 204
   else
@@ -174,12 +187,15 @@ def toggle(value)
 end
 
 # Toggle todo as complete
-post "/lists/:list_id/todos/:todo_id" do
+post "/lists/:list_id/todos/:id" do
   @list_id = params[:list_id].to_i
-  @todo_id = params[:todo_id].to_i
   @list = load_list(@list_id)
-  @todo_item = @list[:todos][@todo_id]
-  @todo_item[:completed] = toggle(params[:completed])
+  
+  todo_id = params[:id].to_i
+  p params[:completed]
+
+  todo = @list[:todos].find { |todo| todo[:id] == todo_id }
+  todo[:completed] = toggle(params[:completed])
   
   session[:success] = "The todo has been updated."
   redirect "/lists/#{@list_id}"
